@@ -53,7 +53,7 @@
   @media (prefers-reduced-motion: reduce) { .racun, .racun.neplaceno { transform: none; } }
   /* Два сајта, као две картице у боји zailiprotiv.rs (светла тема): беле, равне, са логом и дугметом, да се
      одвоје и од црвене и од зелене позадине и од рачуна. Цела картица је линк. */
-  #vise { margin: 10px 0 26px; width: min(100%, 760px); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  #vise { margin: 4px 0 26px; width: min(100%, 760px); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 14px; text-align: left; }
   #vise .nad { grid-column: 1 / -1; margin: 0; text-align: center; font-size: 13px; letter-spacing: .14em;
                text-transform: uppercase; color: var(--muted); }
@@ -66,6 +66,15 @@
   #vise .ime svg { width: 34px; height: auto; flex: none; }
   #vise .ime svg path { fill: none; stroke-width: 16; }
   #vise .za { color: #1f5fa8; } #vise .protiv { color: #c2410c; }
+  /* Лого За или Против: плави лук слева, наранџасти здесна, бели размак између њих иде тамо-амо. Збир оба увек
+     94 од 100 (размак 6), а исти ритам за оба, па размак остаје исте ширине. */
+  #vise .luk-za { stroke-dasharray: 66 100; animation: luk-za 7s ease-in-out infinite; }
+  #vise .luk-protiv { stroke-dasharray: 28 100; animation: luk-protiv 7s ease-in-out infinite; }
+  @keyframes luk-za { 0%, 100% { stroke-dasharray: 66 100; } 25% { stroke-dasharray: 38 100; }
+                      50% { stroke-dasharray: 57 100; } 75% { stroke-dasharray: 44 100; } }
+  @keyframes luk-protiv { 0%, 100% { stroke-dasharray: 28 100; } 25% { stroke-dasharray: 56 100; }
+                          50% { stroke-dasharray: 37 100; } 75% { stroke-dasharray: 50 100; } }
+  @media (prefers-reduced-motion: reduce) { #vise .luk-za, #vise .luk-protiv { animation: none; } }
   @keyframes puls { 0%, 100% { box-shadow: 0 0 0 4px rgba(194,65,12,.22); } 50% { box-shadow: 0 0 0 9px rgba(194,65,12,.04); } }
   #vise .tacka { animation: puls 1.6s ease-in-out infinite; }
   @media (prefers-reduced-motion: reduce) { #vise .tacka { animation: none; } }
@@ -87,19 +96,6 @@
   <h1>Да ли ОН и даље прича?</h1>
   <p id="total"></p>
   <p id="answer" role="status" aria-live="polite">…</p>
-  <nav id="vise" aria-label="Озбиљно, без шале">
-    <p class="nad">Озбиљно, без шале</p>
-    <a class="mik" href="https://mikrofon.zailiprotiv.rs/cir/">
-      <span class="ime"><span class="tacka" aria-hidden="true"></span>Ко сада говори</span>
-      <span class="opis">Исти пренос, без шале: ко је за говорницом, за сваког посланика исто, са снимком сваког говора.</span>
-      <span class="dugme">mikrofon.zailiprotiv.rs →</span>
-    </a>
-    <a href="https://zailiprotiv.rs/cir/">
-      <span class="ime"><svg viewBox="0 0 120 76" aria-hidden="true"><path stroke="#1f5fa8" d="M 14 66 A 46 46 0 0 1 83 26.2"/><path stroke="#c2410c" d="M 89.6 30.8 A 46 46 0 0 1 106 66"/></svg><span><span class="za">За</span> или <span class="protiv">Против</span></span></span>
-      <span class="opis">Како је сваки посланик гласао о сваком закону, и шта је ко рекао у сали, дословно из стенограма.</span>
-      <span class="dugme">zailiprotiv.rs →</span>
-    </a>
-  </nav>
   <div id="papiri">
   <section id="fun" aria-live="off"></section>
   <!-- Неплаћени рачуни: афере са тренутним стањем из извора (Време, 9. 11. 2026; Wikipedia). Пре сваке измене
@@ -124,6 +120,19 @@
     <p class="sitno">Рачун остаје отворен до пресуде.</p>
   </section>
   </div>
+  <nav id="vise" aria-label="Озбиљно, без шале">
+    <p class="nad">Озбиљно, без шале</p>
+    <a class="mik" href="https://mikrofon.zailiprotiv.rs/cir/">
+      <span class="ime"><span class="tacka" aria-hidden="true"></span>Ко сада говори</span>
+      <span class="opis">Исти пренос, без шале: ко је за говорницом, за сваког посланика исто, са снимком сваког говора.</span>
+      <span class="dugme">mikrofon.zailiprotiv.rs →</span>
+    </a>
+    <a href="https://zailiprotiv.rs/cir/">
+      <span class="ime"><svg viewBox="0 0 120 76" aria-hidden="true"><path class="luk-za" stroke="#1f5fa8" pathLength="100" d="M 14 66 A 46 46 0 0 1 106 66"/><path class="luk-protiv" stroke="#c2410c" pathLength="100" d="M 106 66 A 46 46 0 0 0 14 66"/></svg><span><span class="za">За</span> или <span class="protiv">Против</span></span></span>
+      <span class="opis">Како је сваки посланик гласао о сваком закону, и шта је ко рекао у сали, дословно из стенограма.</span>
+      <span class="dugme">zailiprotiv.rs →</span>
+    </a>
+  </nav>
   <footer><span id="meta">Учитавање</span><button id="bell" type="button" hidden></button></footer>
 <script>
   const WORDS = { speaking: "ДА", not_speaking: "НЕ", no_stream: "Нема преноса" };
