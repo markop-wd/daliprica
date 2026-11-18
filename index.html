@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="sr-Cyrl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Да ли ОН и даље прича?</title>
+<style>
+  :root { --bg: #f4f1ea; --fg: #16140f; --muted: #6f6a5e; }
+  body[data-s="speaking"] { --bg: #c8102e; --fg: #fff; --muted: #ffd0d6; }
+  body[data-s="not_speaking"] { --bg: #10261c; --fg: #e9f5ee; --muted: #8fb3a0; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: grid; grid-template-rows: auto auto 1fr auto auto auto; justify-items: center;
+    padding: clamp(20px, 5vw, 56px); text-align: center;
+    background: var(--bg); color: var(--fg);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    transition: background-color .6s ease, color .6s ease;
+  }
+  h1 { margin: 0; font-size: clamp(18px, 3.2vw, 34px); font-weight: 500; letter-spacing: -.01em; text-wrap: balance; }
+  #answer {
+    align-self: center; margin: 0; padding-bottom: .2em; line-height: .82; font-weight: 800;
+    font-size: clamp(96px, 30vw, 360px); letter-spacing: -.05em;
+  }
+  body[data-s="no_stream"] #answer, body[data-s="loading"] #answer {
+    font-size: clamp(40px, 11vw, 150px); letter-spacing: -.03em; line-height: 1;
+  }
+  #total { margin: .35em 0 0; font-size: clamp(16px, 2.2vw, 22px); color: var(--muted); font-variant-numeric: tabular-nums; }
+  #total b { color: var(--fg); }
+  #total:empty { display: none; }
+  /* Два папира један поред другог (на телефону један испод другог): рачун и „Неплаћени рачуни“. */
+  #papiri { margin: 0 0 clamp(16px, 3vw, 28px); width: min(100%, 860px); display: flex; flex-wrap: wrap;
+            justify-content: center; align-items: flex-start; gap: 28px; }
+  #fun { display: flex; justify-content: center; flex: 0 1 380px; }
+  #fun:empty { display: none; }
+  /* „Фискални рачун“: шта се могло за то време, као рачун са касе. */
+  .racun { width: min(100%, 380px); background: #fbfaf6; color: #1b1b18; text-align: left;
+           font: 14px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+           padding: 20px 20px 16px; box-shadow: 0 10px 30px rgba(0,0,0,.35); transform: rotate(-1.2deg); }
+  .racun p { margin: 0; text-align: center; }
+  .racun .naslov { font-weight: 700; letter-spacing: .08em; }
+  .racun .sitno { font-size: 12px; color: #55554d; }
+  .racun .crta { border-top: 1px dashed #55554d; margin: 9px 0; }
+  .racun .red { display: flex; gap: 8px; margin: 4px 0; }
+  .racun .red span:first-child { flex: 1; }
+  .racun .red span:last-child { font-variant-numeric: tabular-nums; }
+  .racun .ukupno { font-weight: 700; }
+  .racun .kom { white-space: nowrap; color: #55554d; }
+  .racun .ili { margin: -1px 0; font-size: 12px; color: #55554d; }  /* ставке су могућности, не збир */  /* трајање по комаду: никад преломљено */
+  .racun.neplaceno { width: min(100%, 420px); background: #f6efe0; transform: rotate(1deg); }
+  .racun .opis { font-size: 12px; color: #55554d; margin: 0 0 7px; text-align: left; }
+  .racun a { color: inherit; }
+  @media (prefers-reduced-motion: reduce) { .racun, .racun.neplaceno { transform: none; } }
+  /* Два сајта, као две картице у боји zailiprotiv.rs (светла тема): беле, равне, са логом и дугметом, да се
+     одвоје и од црвене и од зелене позадине и од рачуна. Цела картица је линк. */
+  #vise { margin: 10px 0 26px; width: min(100%, 760px); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px; text-align: left; }
+  #vise .nad { grid-column: 1 / -1; margin: 0; text-align: center; font-size: 13px; letter-spacing: .14em;
+               text-transform: uppercase; color: var(--muted); }
+  #vise a { display: flex; flex-direction: column; gap: 8px; padding: 18px 18px 16px; border-radius: 14px;
+            text-decoration: none; background: #ffffff; color: #111111; box-shadow: 0 10px 28px rgba(0,0,0,.32);
+            transition: transform .15s ease, box-shadow .15s ease; }
+  #vise a:hover { transform: translateY(-2px); box-shadow: 0 14px 34px rgba(0,0,0,.4); }
+  #vise a:focus-visible { outline: 3px solid #7cc0f5; outline-offset: 3px; }
+  #vise .ime { display: flex; align-items: center; gap: 8px; font: 700 21px/1.2 Georgia, "Times New Roman", serif; letter-spacing: -.01em; }
+  #vise .ime svg { width: 34px; height: auto; flex: none; }
+  #vise .ime svg path { fill: none; stroke-width: 16; }
+  #vise .za { color: #1f5fa8; } #vise .protiv { color: #c2410c; }
+  @keyframes puls { 0%, 100% { box-shadow: 0 0 0 4px rgba(194,65,12,.22); } 50% { box-shadow: 0 0 0 9px rgba(194,65,12,.04); } }
+  #vise .tacka { animation: puls 1.6s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) { #vise .tacka { animation: none; } }
+  #vise .tacka { width: 12px; height: 12px; border-radius: 50%; background: #c2410c; flex: none;
+                 box-shadow: 0 0 0 4px rgba(194,65,12,.18); }
+  #vise .opis { font-size: 15px; line-height: 1.45; color: #3d3d3d; }
+  #vise .dugme { align-self: flex-start; margin-top: 4px; padding: 7px 14px; border-radius: 999px; font-size: 14px;
+                 font-weight: 700; color: #ffffff; background: #1f5fa8; }
+  #vise .mik .dugme { background: #c2410c; }
+  @media (prefers-reduced-motion: reduce) { #vise a { transition: none; } #vise a:hover { transform: none; } }
+  @media (max-width: 560px) { #vise { grid-template-columns: minmax(0, 1fr); } }
+  footer { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  #bell { margin-left: .6em; font: inherit; color: inherit; background: none; border: 1px solid currentColor;
+          border-radius: 999px; padding: .15em .7em; cursor: pointer; }
+  @media (prefers-reduced-motion: reduce) { body { transition: none; } }
+</style>
+</head>
+<body data-s="loading">
+  <h1>Да ли ОН и даље прича?</h1>
+  <p id="total"></p>
+  <p id="answer" role="status" aria-live="polite">…</p>
+  <nav id="vise" aria-label="Озбиљно, без шале">
+    <p class="nad">Озбиљно, без шале</p>
+    <a class="mik" href="https://mikrofon.zailiprotiv.rs/cir/">
+      <span class="ime"><span class="tacka" aria-hidden="true"></span>Ко сада говори</span>
+      <span class="opis">Исти пренос, без шале: ко је за говорницом, за сваког посланика исто, са снимком сваког говора.</span>
+      <span class="dugme">mikrofon.zailiprotiv.rs →</span>
+    </a>
+    <a href="https://zailiprotiv.rs/cir/">
+      <span class="ime"><svg viewBox="0 0 120 76" aria-hidden="true"><path stroke="#1f5fa8" d="M 14 66 A 46 46 0 0 1 83 26.2"/><path stroke="#c2410c" d="M 89.6 30.8 A 46 46 0 0 1 106 66"/></svg><span><span class="za">За</span> или <span class="protiv">Против</span></span></span>
+      <span class="opis">Како је сваки посланик гласао о сваком закону, и шта је ко рекао у сали, дословно из стенограма.</span>
+      <span class="dugme">zailiprotiv.rs →</span>
+    </a>
+  </nav>
+  <div id="papiri">
+  <section id="fun" aria-live="off"></section>
+  <!-- Неплаћени рачуни: афере са тренутним стањем из извора (Време, 9. 11. 2026; Wikipedia). Пре сваке измене
+       проверити стање: ово тврди нешто о стварним људима. Афере са погинулима овде намерно нису. -->
+  <section class="racun neplaceno" aria-label="Неплаћени рачуни">
+    <p class="naslov">НЕПЛАЋЕНИ РАЧУНИ</p>
+    <p class="sitno">Афере из медијских пописа · стање: новембар 2026.</p>
+    <div class="crta"></div>
+    <div class="red sitno"><span>Ставка</span><span>Наплаћено</span></div>
+    <div class="red"><span><b>Савамала, 2016.</b></span><span>1 условна</span></div>
+    <p class="opis">Рушење у изборној ноћи. Осуђен само шеф смене у полицији, 2018.</p>
+    <div class="red"><span><b>Крушик, 2019.</b></span><span>—</span></div>
+    <p class="opis">Узбуњивач открио повлашћене цене муниције. Ухапшен је он; нико од одговорних није одговарао.</p>
+    <div class="red"><span><b>Јовањица, 2019.</b></span><span>без епилога</span></div>
+    <p class="opis">Плантажа марихуане; полицајци оптужени да су помагали власнику. Против функционера нема истраге.</p>
+    <div class="red"><span><b>Ботови, 2022–2023.</b></span><span>угашено 5.374</span></div>
+    <p class="opis">Мета угасила 5.374 налога и 12 група повезаних са СНС; 2023. процурео списак од 14.310 налога.</p>
+    <div class="crta"></div>
+    <div class="red ukupno"><span>ПРЕСУДЕ УКУПНО</span><span>1 условна</span></div>
+    <p class="sitno" style="margin-top:10px">Извори: <a href="https://vreme.com/vesti/pad-vucica-i-afere-naprednjacke-vlasti-sta-sve-ceka-istrage-tuzilastva/">Време</a> ·
+      <a href="https://en.wikipedia.org/wiki/SNS-related_allegations_of_crime_and_corruption">Wikipedia</a></p>
+    <p class="sitno">Рачун остаје отворен до пресуде.</p>
+  </section>
+  </div>
+  <footer><span id="meta">Учитавање</span><button id="bell" type="button" hidden></button></footer>
+<script>
+  const WORDS = { speaking: "ДА", not_speaking: "НЕ", no_stream: "Нема преноса" };
+  const answer = document.getElementById("answer");
+  const meta = document.getElementById("meta");
+  let last = null;
+
+  function ago(ts) {
+    const s = Math.max(0, Math.round(Date.now() / 1000 - ts));
+    if (s < 60) return "пре " + s + " с";
+    if (s < 3600) return "пре " + Math.floor(s / 60) + " мин";
+    return "пре " + Math.floor(s / 3600) + " ч " + Math.floor((s % 3600) / 60) + " мин";
+  }
+
+  // Za koliko se šta stigne: trajanje u sekundama, i šta se za to može, za dati broj.
+  const PLURAL = (n, one, few, many) => {
+    const d = n % 10, h = n % 100;
+    return d === 1 && h !== 11 ? one : d >= 2 && d <= 4 && (h < 12 || h > 14) ? few : many;
+  };
+  // Шта се могло, по комаду: [секунди по комаду, ставка на рачуну]. Домаће, по избору (18. 11. 2026);
+  // „Слагалица“ 20 мин (Време), „Маратонци“ 92 мин, „Ко то тамо пева“ 86 мин, „Молитва“ до 3 мин (Евровизија).
+  const DOABLE = [
+    [3, "Поздрав у три образа"],
+    [5, "„Живели!“ уз куцкање чашама"],
+    [10, "„Добар дан“ са комшијом у лифту"],
+    [30, "Плаћање паркинга СМС-ом"],
+    [60, "„Само једна“ ракија"],
+    [60, "Трубач свира у уво на свадби"],
+    [180, "„Молитва“"],
+    [600, "Круг око Славије у шпицу"],
+    [900, "Турска кафа + гледање у шољу"],
+    [1200, "Испраћај гостију на вратима"],
+    [1200, "„Слагалица“"],
+    [2160, "Соко воз НС–БГ"],
+    [2400, "Наплатна рампа у Бубањ Потоку у петак"],
+    [3600, "Мајстор који „стиже за пет минута“"],
+    [5160, "„Ко то тамо пева“"],
+    [5400, "Стари воз НС–БГ, пре брзе пруге"],
+    [5520, "„Маратонци трче почасни круг“"],
+    [7200, "„Кафа на брзину“ са другаром"],
+  ];
+  // Дно рачуна, наизменично.
+  const THANKS = ["Рекламације се не примају.", "Рачун важи као доказ да сте издржали.", "Хвала на стрпљењу. Дођите опет."];
+  const fun = document.getElementById("fun");
+
+  function span(s) {
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return h ? `${h} ч ${m} мин` : m ? `${m} мин ${sec} с` : `${sec} с`;
+  }
+
+  function clock(s) {  // 47:00, 1:05:09
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    const two = x => String(x).padStart(2, "0");
+    return h ? `${h}:${two(m)}:${two(sec)}` : `${m}:${two(sec)}`;
+  }
+
+  function seeded(a) {  // mulberry32: исти низ за исто семе
+    return () => {
+      a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function funny(now) {
+    const talking = last.status === "speaking";
+    const s = talking ? Math.max(0, now - last.since) : last.last_talk;
+    if (!s || s < 60 || last.status === "no_stream") return "";
+    const can = DOABLE.filter(([t]) => s >= t);
+    const turn = Math.floor(now / 10);  // на сваких 10 с друге ставке
+    // Три могућности: једна ставка сама, па комбинације од три и од две које заједно попуне то време (свака
+    // следећа ставка добије део преосталог, последња остатак). Исте 10 с, па друге: случајно, али са семеном.
+    const r = seeded(turn);
+    const used = new Set();  // ставка се не понавља у другој могућности, док има других
+    const pickN = n => {
+      const fresh = can.filter(x => !used.has(x)), pool = fresh.length >= n ? fresh : can.slice(), out = [];
+      while (out.length < n && pool.length) out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
+      out.forEach(x => used.add(x));
+      return out.sort((a, b) => b[0] - a[0]);
+    };
+    const combo = items => {
+      let left = s;
+      const lines = [];
+      items.forEach(([t, name], i) => {
+        if (t > left) return;
+        const n = i === items.length - 1 ? Math.floor(left / t) : Math.max(1, Math.floor(left * (0.35 + r() * 0.35) / t));
+        left -= n * t;
+        lines.push([t, name, n]);
+      });
+      return lines;
+    };
+    const options = [1, 3, 2].map(n => combo(pickN(Math.min(n, can.length)))).filter(o => o.length);
+    const unit = t => t >= 3600 ? `${Math.floor(t / 3600)} ч${t % 3600 ? ` ${Math.round((t % 3600) / 60)} мин` : ""}`
+      : t % 60 ? (t >= 60 ? `${Math.floor(t / 60)} мин ${t % 60} с` : `${t} с`) : `${t / 60} мин`;
+    const rows = options.map(o => o.map(([t, name, n], i) =>
+      `<div class="red"><span>${i ? "+ " : ""}${name} <span class="kom">(${unit(t)})</span></span><span>×${n}</span></div>`).join(""));
+    const nole = s / 17820;  // финале Вимблдона 2019, Ђоковић–Федерер: 4 ч 57 мин
+    if (nole >= 0.05) rows.push(`<div class="red"><span>Финале Вимблдона 2019.</span><span>${nole >= 1 ? "×" + nole.toFixed(1).replace(".", ",") : Math.round(nole * 100) + "%"}</span></div>`);
+    if (!rows.length) return "";  // ниједна ставка не стаје у то време
+    return `<section class="racun" aria-label="За то време се могло">
+      <p class="naslov">ФИСКАЛНИ РАЧУН</p>
+      <p class="sitno">Касир: Народна скупштина, каса 1</p>
+      <p class="sitno">${talking ? "Говор у току" : "Последњи говор"} · ${span(s)}</p>
+      <div class="crta"></div>
+      <p class="sitno" style="text-align:left">За то време се могло:</p>
+      ${rows.join('<p class="ili">или</p>')}
+      <div class="crta"></div>
+      <div class="red ukupno"><span>УКУПНО ИЗГУБЉЕНО</span><span>${clock(s)}</span></div>
+      <div class="red"><span>Начин плаћања:</span><span>живцима</span></div>
+      <div class="red"><span>Кусур:</span><span>0 мин</span></div>
+      <p class="sitno" style="margin-top:10px">${THANKS[turn % THANKS.length]}</p>
+    </section>`;
+  }
+
+  const totalEl = document.getElementById("total");
+  function render() {
+    if (!last) return;
+    // Svi njegovi govori koje mikrofon ima, i ovaj koji traje, uživo.
+    const all = (last.total || 0) + (last.status === "speaking" ? Math.max(0, Math.round(Date.now() / 1000) - last.since) : 0);
+    const said = all ? `Укупно је причао у 15. сазиву: <b>${span(all)}</b>` : "";
+    if (totalEl.innerHTML !== said) totalEl.innerHTML = said;
+    const html = funny(Math.round(Date.now() / 1000));
+    if (fun.innerHTML !== html) fun.innerHTML = html;
+    document.body.dataset.s = last.status;
+    answer.textContent = WORDS[last.status] || "…";
+    document.title = (WORDS[last.status] || "…") + " · " + document.querySelector("h1").textContent;
+    meta.textContent = last.checked_at
+      ? "Пренос Народне скупштине · проверено " + ago(last.checked_at)
+      : "Чека се пренос Народне скупштине";
+  }
+
+  // Na 3 s: mikrofon čita kadar na 2 s, a prenos kasni 15-25 s. Ne dok je tab u pozadini, i nikad dva zahteva u
+  // isto vreme.
+  let busy = false;
+  // Obaveštenje kad prestane da priča: dok je strana otvorena, i u tabu u pozadini (tada pitamo i dok je skrivena;
+  // pregledač to ume da uspori, pa obaveštenje može da kasni do minut). Pravi push sa zatvorenom stranom ne ide:
+  // za to treba server, a ova strana je statična.
+  const bell = document.getElementById("bell");
+  let notify = false, prev = null, sw = null;
+  function setBell() { bell.textContent = notify ? "🔔 Јавићу кад престане · искључи" : "🔕 Јави ми кад престане"; }
+  if ("Notification" in window) {
+    bell.hidden = false;
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").then(r => { sw = r; }).catch(() => {});
+    try { notify = Notification.permission === "granted" && localStorage.getItem("javi") === "1"; } catch (e) {}
+    setBell();
+    bell.addEventListener("click", async () => {
+      notify = !notify && (await Notification.requestPermission()) === "granted";
+      try { localStorage.setItem("javi", notify ? "1" : "0"); } catch (e) {}
+      setBell();
+      if (Notification.permission === "denied") bell.textContent = "Обавештења су блокирана у прегледачу";
+    });
+  }
+  function stopped() {
+    const opts = { body: last.last_talk ? `Причао је ${span(last.last_talk)}.` : "", tag: "daljeprica", renotify: true };
+    // Android dozvoljava obaveštenje samo preko service workera; ostali i direktno.
+    (sw ? sw.showNotification("Престао је да прича", opts) : Promise.reject())
+      .catch(() => { try { new Notification("Престао је да прича", opts); } catch (e) {} });
+  }
+
+  // Strana je statična (GitHub Pages). Stanje se čita sa mikrofona (Cloudflare ga kešira 2 s); kad mikrofon ne
+  // odgovara, ostaje poslednje stanje. Ukupno po završenim danima je u ukupno.json (pravi ga GitHub Actions na sat).
+  const SLUG = "vucic-aleksandar", MIKROFON = "https://mikrofon.zailiprotiv.rs/stanje.js";
+  let days = {}, daysAt = 0;
+  async function loadDays() {
+    daysAt = Date.now() - 540000;  // neuspelo: opet za minut
+    try {
+      const r = await fetch("ukupno.json", { cache: "no-cache", signal: AbortSignal.timeout(8000) });
+      if (r.ok) { days = (await r.json()).po_danu || {}; daysAt = Date.now(); }
+    } catch (e) {}
+  }
+  function fromMikrofon(m) {  // isto kao Tracker.adopt na serveru
+    const mine = (m.danas || []).filter(t => t.adresa === SLUG);
+    const real = mine.filter(t => t.do - t.od >= 60);
+    const on = m.sada && m.sada.adresa === SLUG;
+    const status = m.stanje === "nema_prenosa" || !m.provereno ? "no_stream" : on ? "speaking" : "not_speaking";
+    // Ukupno: završeni dani iz ukupno.json, dan koji mikrofon pokazuje sa mikrofona (završeni govori; raniji dan iz
+    // ukupno.json kad je već tamo), govor koji traje dodaje render().
+    let total = Object.entries(days).reduce((a, [d, sec]) => a + (d === m.dan ? 0 : sec), 0);
+    total += m.ranije && m.dan in days ? days[m.dan] : mine.reduce((a, t) => a + (t.do - t.od), 0);
+    return { status, since: on ? m.sada.od : (mine[0] ? mine[0].do : m.provereno), checked_at: m.provereno,
+             last_talk: real[0] ? real[0].do - real[0].od : (last ? last.last_talk : 0), total };
+  }
+  async function poll(first) {
+    if (busy || (document.hidden && !first && !notify)) return;  // prvo stanje i u tabu otvorenom u pozadini
+    busy = true;
+    try {
+      if (Date.now() - daysAt > 600000) await loadDays();
+      let got = null;
+      try {
+        const r = await fetch(MIKROFON, { signal: AbortSignal.timeout(6000) });
+        if (r.ok) got = fromMikrofon(await r.json());
+      } catch (e) {}
+      if (got) {
+        last = got;
+        if (notify && prev === "speaking" && last.status === "not_speaking") stopped();
+        prev = last.status;
+      }
+    } catch (e) { /* mreža pala: zadrži poslednje stanje, vreme provere pokazuje starost */ }
+    busy = false;
+    render();
+  }
+
+  poll(true);
+  setInterval(poll, 3000);
+  setInterval(render, 1000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+</script>
+</body>
+</html>
