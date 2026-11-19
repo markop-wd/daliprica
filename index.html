@@ -252,7 +252,7 @@
   function render() {
     if (!last) return;
     // Svi njegovi govori koje mikrofon ima, i ovaj koji traje, uživo.
-    const all = (last.total || 0) + (last.status === "speaking" ? Math.max(0, Math.round(Date.now() / 1000) - last.since) : 0);
+    const all = (last.total || 0) + (last.status === "speaking" && !last.guess ? Math.max(0, Math.round(Date.now() / 1000) - last.since) : 0);
     const said = all ? `Укупно је причао у 15. сазиву: <b>${span(all)}</b>` : "";
     if (totalEl.innerHTML !== said) totalEl.innerHTML = said;
     const html = funny(Math.round(Date.now() / 1000));
@@ -260,8 +260,10 @@
     document.body.dataset.s = last.status;
     answer.textContent = WORDS[last.status] || "…";
     document.title = (WORDS[last.status] || "…") + " · " + document.querySelector("h1").textContent;
+    const hm = t => new Date(t * 1000).toLocaleTimeString("sr-RS", { timeZone: "Europe/Belgrade", hour: "2-digit", minute: "2-digit" });
     meta.textContent = last.checked_at
-      ? "Пренос Народне скупштине · проверено " + ago(last.checked_at)
+      ? (last.guess && last.status === "speaking" ? `Потписа на преносу нема; председавајући му је дао реч у ${hm(last.guess)} · ` : "Пренос Народне скупштине · ")
+        + "проверено " + ago(last.checked_at)
       : "Чека се пренос Народне скупштине";
   }
 
@@ -307,13 +309,22 @@
   function fromMikrofon(m) {  // isto kao Tracker.adopt na serveru
     const mine = (m.danas || []).filter(t => t.adresa === SLUG);
     const real = mine.filter(t => t.do - t.od >= 60);
-    const on = m.sada && m.sada.adresa === SLUG;
+    // Režija od 19. 11. 2026. često ne prikazuje potpis. Tada mikrofon iz reči predsedavajućeg beleži „Реч има: …“
+    // (hronika). Ako je reč poslednji dobio on, posle toga niko nije pročitan sa potpisa i nije bilo pauze, kažemo
+    // ДА, kao procenu: kraj govora se ne zna, pa najviše sat vremena i to vreme ne ulazi u ukupno.
+    const steps = m.hronika || [];
+    const floor = steps.filter(e => e.vrsta === "Reč ima").sort((a, b) => b.t - a.t)[0];
+    const seen = Math.max(0, ...(m.danas || []).map(t => t.do));
+    const guess = !m.sada && !m.ranije && !!floor && floor.url === SLUG && floor.t > seen
+      && (m.provereno || 0) - floor.t < 3600
+      && !steps.some(e => e.t > floor.t && (e.vrsta === "Pauza" || e.vrsta === "Kraj rada"));
+    const on = (m.sada && m.sada.adresa === SLUG) || guess;
     const status = m.stanje === "nema_prenosa" || !m.provereno ? "no_stream" : on ? "speaking" : "not_speaking";
     // Ukupno: završeni dani iz ukupno.json, dan koji mikrofon pokazuje sa mikrofona (završeni govori; raniji dan iz
     // ukupno.json kad je već tamo), govor koji traje dodaje render().
     let total = Object.entries(days).reduce((a, [d, sec]) => a + (d === m.dan ? 0 : sec), 0);
     total += m.ranije && m.dan in days ? days[m.dan] : mine.reduce((a, t) => a + (t.do - t.od), 0);
-    return { status, since: on ? m.sada.od : (mine[0] ? mine[0].do : m.provereno), checked_at: m.provereno,
+    return { status, guess: guess ? floor.t : 0, since: guess ? floor.t : on ? m.sada.od : (mine[0] ? mine[0].do : m.provereno), checked_at: m.provereno,
              last_talk: real[0] ? real[0].do - real[0].od : (last ? last.last_talk : 0), total };
   }
   async function poll(first) {
